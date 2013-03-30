@@ -2,20 +2,21 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MAX_RECORDS 4
+#define MAX_RECORDS 10
 #define STDIN_LINES_SIZE 64
+#define TRANSACTION_ID_SIZE 20
 
 FILE * read_in;
 
 typedef struct {
     float time;
-    char transaction_id[20];
+    char transaction_id[TRANSACTION_ID_SIZE];
 } status_record;
 
 typedef struct {
     status_record record[MAX_RECORDS];
     int current_index;
-    char overlap;
+    int has_overlapped;
 } ring_buffer;
 
 /* cast as ring_buffer, calloc fills memory with 0, which we want
@@ -33,7 +34,7 @@ int pump_record(status_record this_record){
     /* Have we overflowed? */
     if (ring.current_index >= MAX_RECORDS){
         ring.current_index = 0;
-        ring.overlap = 1;
+        ring.has_overlapped = 1;
     }
 }
 
@@ -43,6 +44,10 @@ void print_buffer() {
         printf("buffer @ %d: %f - %s\n", i, ring.record[i].time, ring.record[i].transaction_id);
     }
 }
+
+void sort_data(){
+    
+}   
 
 int read_lines_from_stdin(){
     char line[STDIN_LINES_SIZE];
@@ -67,7 +72,7 @@ int read_lines_from_stdin(){
 
 int main(void){
     ring.current_index = 0;
-    ring.overlap = 0;
+    ring.has_overlapped = 0;
     read_lines_from_stdin();
     print_buffer();
 }
