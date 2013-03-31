@@ -17,8 +17,6 @@
 #define LISTEN_PORT 2020
 
 
-FILE * read_in;
-
 typedef struct {
     float time;
     char transaction_id[TRANSACTION_ID_SIZE];
@@ -109,10 +107,6 @@ void* read_lines_from_stdin(){
     char *p_line = line;
     char *p_remainding;
     status_record record;
-
-    /* file for testing */
-    read_in = fopen("data.txt", "r");
-    /* end file for testing */
 
     while(fgets(line, sizeof line, stdin) != NULL) {
         /* Split by new line and then coverter to float */
