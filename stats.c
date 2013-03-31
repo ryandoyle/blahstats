@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MAX_RECORDS 10
+#define MAX_RECORDS 50
 #define STDIN_LINES_SIZE 64
 #define TRANSACTION_ID_SIZE 20
 
@@ -27,7 +27,7 @@ typedef struct {
 ring_buffer ring;
 
 int pump_record(status_record this_record){
-    printf("%f - %s\n", this_record.time, this_record.transaction_id);
+    printf("pushing to ring buffer: %f - %s\n", this_record.time, this_record.transaction_id);
 
     /* Pop it onto the ring buffer */
     ring.record[ring.current_index] = this_record;
@@ -47,9 +47,13 @@ void print_buffer() {
     }
 }
 
-void sort_data(){
+int sort_data(){
     int i;
-    int sort_length;
+
+    if(!ring.has_overlapped){
+        printf("Ring buffer not full enough: Need %i, have %i\n", MAX_RECORDS, ring.current_index);
+        return -1;
+    }
     /* For pointer to sorted index */
     status_record_ptr pointed_records[MAX_RECORDS];
     /* Populate pointer to struct - we could copy the data and this would allow us to 
@@ -61,15 +65,8 @@ void sort_data(){
         pointed_records[i].transaction_id = ring.record[i].transaction_id;
     }
     
-    /* Should we sort everything? */
-    if (ring.has_overlapped){
-        sort_length = MAX_RECORDS;
-    }
-    else {
-        sort_length = ring.current_index;
-    }
     /* Insertion sort */
-    for (i=0; i<sort_length; i++){
+    for (i=0; i<MAX_RECORDS; i++){
         int j;
         float *v = pointed_records[i].time;
         char *transaction_id = pointed_records[i].transaction_id;
@@ -84,7 +81,7 @@ void sort_data(){
     }
 
     /* Print out results */
-    for (i=0;i<sort_length;i++){
+    for (i=0;i<MAX_RECORDS;i++){
         printf("sorted: %f - %s\n", *pointed_records[i].time, pointed_records[i].transaction_id);
     }
 
@@ -115,7 +112,6 @@ int main(void){
     ring.current_index = 0;
     ring.has_overlapped = 0;
     read_lines_from_stdin();
-    print_buffer();
     sort_data();
 }
 
