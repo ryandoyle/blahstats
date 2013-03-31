@@ -11,7 +11,7 @@
 #define RECORD_OK 1
 
 
-#define MAX_RECORDS 50
+#define MAX_RECORDS 1000
 #define STDIN_LINES_SIZE 64
 #define TRANSACTION_ID_SIZE 20
 #define LISTEN_PORT 2020
