@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #define MAX_RECORDS 50
 #define STDIN_LINES_SIZE 64
@@ -47,8 +48,9 @@ void print_buffer() {
     }
 }
 
-int sort_data(){
+int get_95th_percentile(){
     int i;
+    int ninety_fifth_element;
 
     if(!ring.has_overlapped){
         printf("Ring buffer not full enough: Need %i, have %i\n", MAX_RECORDS, ring.current_index);
@@ -85,6 +87,13 @@ int sort_data(){
         printf("sorted: %f - %s\n", *pointed_records[i].time, pointed_records[i].transaction_id);
     }
 
+    /* Get the 95th percent */
+    ninety_fifth_element = (int)floor(((float)MAX_RECORDS) * .95);
+    printf("95th percentile: element: %i, time: %f, reference: %s\n", 
+            ninety_fifth_element, 
+            *pointed_records[ninety_fifth_element].time, 
+            pointed_records[ninety_fifth_element].transaction_id);
+
 }   
 
 int read_lines_from_stdin(){
@@ -112,6 +121,6 @@ int main(void){
     ring.current_index = 0;
     ring.has_overlapped = 0;
     read_lines_from_stdin();
-    sort_data();
+    get_95th_percentile();
 }
 
