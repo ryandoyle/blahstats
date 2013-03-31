@@ -14,14 +14,16 @@ typedef struct {
 } status_record;
 
 typedef struct {
+    float *time;
+    char *transaction_id;
+} status_record_ptr;
+
+typedef struct {
     status_record record[MAX_RECORDS];
     int current_index;
     int has_overlapped;
 } ring_buffer;
 
-/* cast as ring_buffer, calloc fills memory with 0, which we want
-   1 is the number of members per per size
- */
 ring_buffer ring;
 
 int pump_record(status_record this_record){
@@ -46,7 +48,46 @@ void print_buffer() {
 }
 
 void sort_data(){
+    int i;
+    int sort_length;
+    /* For pointer to sorted index */
+    status_record_ptr pointed_records[MAX_RECORDS];
+    /* Populate pointer to struct - we could copy the data and this would allow us to 
+       keep the ring buffer unlocked while we are sorting. Instead, lock the ring from
+       updating so we don't use as much space, only pointers to the real values
+     */
+    for (i=0; i<MAX_RECORDS; i++){
+        pointed_records[i].time = &ring.record[i].time;
+        pointed_records[i].transaction_id = ring.record[i].transaction_id;
+    }
     
+    /* Should we sort everything? */
+    if (ring.has_overlapped){
+        sort_length = MAX_RECORDS;
+    }
+    else {
+        sort_length = ring.current_index;
+    }
+    /* Insertion sort */
+    for (i=0; i<sort_length; i++){
+        int j;
+        float *v = pointed_records[i].time;
+        char *transaction_id = pointed_records[i].transaction_id;
+        for (j=i-1; j>=0; j--)
+        {
+            if (*pointed_records[j].time <= *v) break;
+            pointed_records[j + 1].time = pointed_records[j].time;
+            pointed_records[j + 1].transaction_id = pointed_records[j].transaction_id;
+        }
+        pointed_records[j + 1].time = v;
+        pointed_records[j + 1].transaction_id = transaction_id;
+    }
+
+    /* Print out results */
+    for (i=0;i<sort_length;i++){
+        printf("sorted: %f - %s\n", *pointed_records[i].time, pointed_records[i].transaction_id);
+    }
+
 }   
 
 int read_lines_from_stdin(){
@@ -75,5 +116,6 @@ int main(void){
     ring.has_overlapped = 0;
     read_lines_from_stdin();
     print_buffer();
+    sort_data();
 }
 
