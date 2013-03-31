@@ -37,7 +37,7 @@ typedef struct {
 
 ring_buffer ring;
 pthread_t thread_stdin; /* Thread for the stdin read loop */
-
+pthread_mutex_t lock;
 
 int pump_record(status_record this_record){
     printf("pushing to ring buffer: %f - %s\n", this_record.time, this_record.transaction_id);
@@ -128,7 +128,9 @@ void* read_lines_from_stdin(){
         p_remainding[strlen(p_remainding) - 1] = '\0';
         strcpy(record.transaction_id, p_remainding);
         /* Push it onto the stack */
+        pthread_mutex_lock(&lock);
         pump_record(record);
+        pthread_mutex_unlock(&lock);
     }
 }
 
@@ -158,7 +160,10 @@ int listen_for_queries(){
     while(1){
         int record_ret;
         connfd = accept(listenfd, (struct sockaddr*)NULL, NULL);
+        /* Lock and get the record */
+        pthread_mutex_lock(&lock);
         record_ret = get_percentile(.95, &percentile_record);
+        pthread_mutex_unlock(&lock);
         /* Work out what to send */
         switch(record_ret){
             case RECORD_OK: 
@@ -186,6 +191,8 @@ int main(void){
     /* Setup the ring buffer */
     ring.current_index = 0;
     ring.has_overlapped = 0;
+    /* And the mutex */
+    pthread_mutex_init(&lock, NULL);
     /* Keep reading stdin on another thread */
     pthread_create(&thread_stdin, NULL, &read_lines_from_stdin, NULL);
     listen_for_queries();
