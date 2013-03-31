@@ -1,0 +1,12 @@
+blahstats - a hard way to process 95th percentile from stdin
+
+This is more an exercise in programming than of practical use.
+
+To use:
+
+    $ ./pump_data.sh .01 | ./stats
+
+This will start pumping data into stats. To access the 95th percentile, query on port 2020:
+
+    $ nc localhost 2020
+
