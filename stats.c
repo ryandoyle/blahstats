@@ -40,6 +40,10 @@ pthread_mutex_t lock;
 int pump_record(status_record this_record){
     printf("pushing to ring buffer: %f - %s\n", this_record.time, this_record.transaction_id);
 
+    /* We need exclusive access to ring data structure and we _could_ be asking for the percentile
+       from this data structure. Lock it so we don't corrupt the data
+     */
+    pthread_mutex_lock(&lock);
     /* Pop it onto the ring buffer */
     ring.record[ring.current_index] = this_record;
     /* Increment our index */
@@ -49,14 +53,26 @@ int pump_record(status_record this_record){
         ring.current_index = 0;
         ring.has_overlapped = 1;
     }
+    pthread_mutex_unlock(&lock);
 }
+
 
 int get_percentile(float percentile, status_record *percentile_record){
     int i;
     int percentile_element;
 
+    /* We need exclusive access to the ring buffer. We are populating another data 
+       structure with pointers to the data in the original ring buffer. If we don't lock,
+       we will overwrite the original data and we will be pointing to data that is not 
+       sorted. We are assuming the time taken to sort is less the time taken for the 
+       pipe buffer to fill up.
+      
+     */
+    pthread_mutex_lock(&lock);
+
     if(!ring.has_overlapped){
         printf("Ring buffer not full enough: Need %i, have %i\n", MAX_RECORDS, ring.current_index);
+        pthread_mutex_unlock(&lock);
         return ERR_RING_NOT_FULL;
     }
     /* For pointer to sorted index */
@@ -99,6 +115,8 @@ int get_percentile(float percentile, status_record *percentile_record){
             pointed_records[percentile_element].transaction_id);
     percentile_record->time = *pointed_records[percentile_element].time;
     strcpy(percentile_record->transaction_id,pointed_records[percentile_element].transaction_id);
+    /* Finally, we can unlock */
+    pthread_mutex_unlock(&lock);
     return RECORD_OK;
 }   
 
@@ -115,9 +133,7 @@ void* read_lines_from_stdin(){
         p_remainding[strlen(p_remainding) - 1] = '\0';
         strcpy(record.transaction_id, p_remainding);
         /* Push it onto the stack */
-        pthread_mutex_lock(&lock);
         pump_record(record);
-        pthread_mutex_unlock(&lock);
     }
 }
 
@@ -147,10 +163,7 @@ int listen_for_queries(){
     while(1){
         int record_ret;
         connfd = accept(listenfd, (struct sockaddr*)NULL, NULL);
-        /* Lock and get the record */
-        pthread_mutex_lock(&lock);
         record_ret = get_percentile(.95, &percentile_record);
-        pthread_mutex_unlock(&lock);
         /* Work out what to send */
         switch(record_ret){
             case RECORD_OK: 
