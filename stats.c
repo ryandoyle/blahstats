@@ -136,6 +136,7 @@ int listen_for_queries(){
 
     int listenfd = 0;
     int connfd = 0;
+    int socket_reuse = 1;
     struct sockaddr_in serv_addr;
     char send_buf[128];
     status_record percentile_record;
@@ -147,6 +148,8 @@ int listen_for_queries(){
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     serv_addr.sin_port = htons(LISTEN_PORT);
+
+    setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &socket_reuse, sizeof(int));
 
     bind(listenfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
 
@@ -186,8 +189,5 @@ int main(void){
     /* Keep reading stdin on another thread */
     pthread_create(&thread_stdin, NULL, &read_lines_from_stdin, NULL);
     listen_for_queries();
-    //read_lines_from_stdin();
-    //sleep(5); // Hack until i can get it working from a socket
-    //printf("percentile record: %f, %s\n", percentile_record.time, percentile_record.transaction_id); 
 }
 
