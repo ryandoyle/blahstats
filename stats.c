@@ -16,7 +16,7 @@ typedef struct {
 typedef struct {
     float *time;
     char *transaction_id;
-} status_record_sorted;
+} status_record_ptr;
 
 typedef struct {
     status_record record[MAX_RECORDS];
@@ -55,34 +55,34 @@ int sort_data(){
         return -1;
     }
     /* For pointer to sorted index */
-    status_record_sorted sorted_records[MAX_RECORDS];
+    status_record_ptr pointed_records[MAX_RECORDS];
     /* Populate pointer to struct - we could copy the data and this would allow us to 
        keep the ring buffer unlocked while we are sorting. Instead, lock the ring from
        updating so we don't use as much space, only pointers to the real values
      */
     for (i=0; i<MAX_RECORDS; i++){
-        sorted_records[i].time = &ring.record[i].time;
-        sorted_records[i].transaction_id = ring.record[i].transaction_id;
+        pointed_records[i].time = &ring.record[i].time;
+        pointed_records[i].transaction_id = ring.record[i].transaction_id;
     }
     
     /* Insertion sort */
     for (i=0; i<MAX_RECORDS; i++){
         int j;
-        float *v = sorted_records[i].time;
-        char *transaction_id = sorted_records[i].transaction_id;
+        float *v = pointed_records[i].time;
+        char *transaction_id = pointed_records[i].transaction_id;
         for (j=i-1; j>=0; j--)
         {
-            if (*sorted_records[j].time <= *v) break;
-            sorted_records[j + 1].time = sorted_records[j].time;
-            sorted_records[j + 1].transaction_id = sorted_records[j].transaction_id;
+            if (*pointed_records[j].time <= *v) break;
+            pointed_records[j + 1].time = pointed_records[j].time;
+            pointed_records[j + 1].transaction_id = pointed_records[j].transaction_id;
         }
-        sorted_records[j + 1].time = v;
-        sorted_records[j + 1].transaction_id = transaction_id;
+        pointed_records[j + 1].time = v;
+        pointed_records[j + 1].transaction_id = transaction_id;
     }
 
     /* Print out results */
     for (i=0;i<MAX_RECORDS;i++){
-        printf("sorted: %f - %s\n", *sorted_records[i].time, sorted_records[i].transaction_id);
+        printf("sorted: %f - %s\n", *pointed_records[i].time, pointed_records[i].transaction_id);
     }
 
 }   
