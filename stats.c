@@ -3,9 +3,12 @@
 #include <string.h>
 #include <math.h>
 
+#define ERR_RING_NOT_FULL -1
+
 #define MAX_RECORDS 50
 #define STDIN_LINES_SIZE 64
 #define TRANSACTION_ID_SIZE 20
+
 
 FILE * read_in;
 
@@ -48,13 +51,13 @@ void print_buffer() {
     }
 }
 
-int get_95th_percentile(){
+int get_percentile(float percentile, status_record *percentile_record){
     int i;
-    int ninety_fifth_element;
+    int percentile_element;
 
     if(!ring.has_overlapped){
         printf("Ring buffer not full enough: Need %i, have %i\n", MAX_RECORDS, ring.current_index);
-        return -1;
+        return ERR_RING_NOT_FULL;
     }
     /* For pointer to sorted index */
     status_record_ptr pointed_records[MAX_RECORDS];
@@ -88,12 +91,15 @@ int get_95th_percentile(){
     }
 
     /* Get the 95th percent */
-    ninety_fifth_element = (int)floor(((float)MAX_RECORDS) * .95);
-    printf("95th percentile: element: %i, time: %f, reference: %s\n", 
-            ninety_fifth_element, 
-            *pointed_records[ninety_fifth_element].time, 
-            pointed_records[ninety_fifth_element].transaction_id);
-
+    percentile_element = (int)floor(((float)MAX_RECORDS) * percentile);
+    printf("%f percentile: element: %i, time: %f, reference: %s\n", 
+            percentile,
+            percentile_element, 
+            *pointed_records[percentile_element].time, 
+            pointed_records[percentile_element].transaction_id);
+    percentile_record->time = *pointed_records[percentile_element].time;
+    strcpy(percentile_record->transaction_id,pointed_records[percentile_element].transaction_id);
+    return 1;
 }   
 
 int read_lines_from_stdin(){
@@ -121,6 +127,8 @@ int main(void){
     ring.current_index = 0;
     ring.has_overlapped = 0;
     read_lines_from_stdin();
-    get_95th_percentile();
+    status_record percentile_record;
+    get_percentile(.90, &percentile_record);
+    printf("percentile record: %f, %s\n", percentile_record.time, percentile_record.transaction_id); 
 }
 
