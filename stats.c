@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <pthread.h>
 
 #define ERR_RING_NOT_FULL -1
 
@@ -29,6 +30,8 @@ typedef struct {
 } ring_buffer;
 
 ring_buffer ring;
+pthread_t thread_stdin; /* Thread for the stdin read loop */
+
 
 int pump_record(status_record this_record){
     printf("pushing to ring buffer: %f - %s\n", this_record.time, this_record.transaction_id);
@@ -102,7 +105,7 @@ int get_percentile(float percentile, status_record *percentile_record){
     return 1;
 }   
 
-int read_lines_from_stdin(){
+void* read_lines_from_stdin(){
     char line[STDIN_LINES_SIZE];
     char *p_line = line;
     char *p_remainding;
@@ -112,7 +115,7 @@ int read_lines_from_stdin(){
     read_in = fopen("data.txt", "r");
     /* end file for testing */
 
-    while(fgets(line, sizeof line, read_in) != NULL) {
+    while(fgets(line, sizeof line, stdin) != NULL) {
         /* Split by new line and then coverter to float */
         record.time = strtof(strtok_r(p_line, " ", &p_remainding), (char **) NULL);
         /* Strip newline character */
@@ -124,10 +127,14 @@ int read_lines_from_stdin(){
 }
 
 int main(void){
+    status_record percentile_record;
+    /* Setup the ring buffer */
     ring.current_index = 0;
     ring.has_overlapped = 0;
-    read_lines_from_stdin();
-    status_record percentile_record;
+    /* Keep reading stdin on another thread */
+    pthread_create(&thread_stdin, NULL, &read_lines_from_stdin, NULL);
+    //read_lines_from_stdin();
+    sleep(5);
     get_percentile(.90, &percentile_record);
     printf("percentile record: %f, %s\n", percentile_record.time, percentile_record.transaction_id); 
 }
