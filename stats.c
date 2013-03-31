@@ -3,12 +3,18 @@
 #include <string.h>
 #include <math.h>
 #include <pthread.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #define ERR_RING_NOT_FULL -1
+#define RECORD_OK 1
+
 
 #define MAX_RECORDS 50
 #define STDIN_LINES_SIZE 64
 #define TRANSACTION_ID_SIZE 20
+#define LISTEN_PORT 2020
 
 
 FILE * read_in;
@@ -102,7 +108,7 @@ int get_percentile(float percentile, status_record *percentile_record){
             pointed_records[percentile_element].transaction_id);
     percentile_record->time = *pointed_records[percentile_element].time;
     strcpy(percentile_record->transaction_id,pointed_records[percentile_element].transaction_id);
-    return 1;
+    return RECORD_OK;
 }   
 
 void* read_lines_from_stdin(){
@@ -126,16 +132,62 @@ void* read_lines_from_stdin(){
     }
 }
 
-int main(void){
+int listen_for_queries(){
+
+    int listenfd = 0;
+    int connfd = 0;
+    struct sockaddr_in serv_addr;
+    char send_buf[128];
     status_record percentile_record;
+
+    listenfd = socket(AF_INET, SOCK_STREAM, 0);
+    memset(&serv_addr, 0, sizeof(serv_addr));
+    memset(send_buf, 0, sizeof(send_buf));
+
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    serv_addr.sin_port = htons(LISTEN_PORT);
+
+    bind(listenfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
+
+    listen(listenfd, 1);
+
+    while(1){
+        int record_ret;
+        connfd = accept(listenfd, (struct sockaddr*)NULL, NULL);
+        record_ret = get_percentile(.95, &percentile_record);
+        /* Work out what to send */
+        switch(record_ret){
+            case RECORD_OK: 
+                snprintf(send_buf, sizeof(send_buf), ".95 percentile - time: %f, transaction_id: %s\n", 
+                        percentile_record.time, percentile_record.transaction_id);
+                break;
+            case ERR_RING_NOT_FULL:
+                snprintf(send_buf, sizeof(send_buf), "ERR: ring buffer not full, try again later\n");
+                break;
+            default:
+                snprintf(send_buf, sizeof(send_buf), "ERR: unknown error\n");
+        }
+
+        /* write it out */
+        write(connfd, send_buf, sizeof(send_buf));
+        close(connfd);
+
+    }
+
+
+
+}
+
+int main(void){
     /* Setup the ring buffer */
     ring.current_index = 0;
     ring.has_overlapped = 0;
     /* Keep reading stdin on another thread */
     pthread_create(&thread_stdin, NULL, &read_lines_from_stdin, NULL);
+    listen_for_queries();
     //read_lines_from_stdin();
-    sleep(5);
-    get_percentile(.90, &percentile_record);
-    printf("percentile record: %f, %s\n", percentile_record.time, percentile_record.transaction_id); 
+    //sleep(5); // Hack until i can get it working from a socket
+    //printf("percentile record: %f, %s\n", percentile_record.time, percentile_record.transaction_id); 
 }
 
