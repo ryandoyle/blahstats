@@ -53,13 +53,6 @@ int pump_record(status_record this_record){
     }
 }
 
-void print_buffer() {
-    int i;
-    for (i=0; i < MAX_RECORDS; i++ ){
-        printf("buffer @ %d: %f - %s\n", i, ring.record[i].time, ring.record[i].transaction_id);
-    }
-}
-
 int get_percentile(float percentile, status_record *percentile_record){
     int i;
     int percentile_element;
