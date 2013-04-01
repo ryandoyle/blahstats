@@ -38,12 +38,12 @@ pthread_t thread_stdin; /* Thread for the stdin read loop */
 pthread_mutex_t lock;
 
 int pump_record(status_record this_record){
-    printf("pushing to ring buffer: %f - %s\n", this_record.time, this_record.transaction_id);
-
     /* We need exclusive access to ring data structure and we _could_ be asking for the percentile
        from this data structure. Lock it so we don't corrupt the data
      */
     pthread_mutex_lock(&lock);
+    printf("pushing to ring buffer[%i]: %f - %s\n", ring.current_index, this_record.time, this_record.transaction_id);
+
     /* Pop it onto the ring buffer */
     ring.record[ring.current_index] = this_record;
     /* Increment our index */
