@@ -1,5 +1,5 @@
 all:
-	gcc -lm -lpthread stats.c -o stats
+	gcc stats.c -lm -lpthread -o stats
 
 clean:
 	rm stats
